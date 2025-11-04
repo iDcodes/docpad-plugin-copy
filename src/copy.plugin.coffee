@@ -16,8 +16,8 @@ module.exports = (BasePlugin) ->
 			config = @getConfig()
 			docpadConfig = @docpad.getConfig()
 
-			outPath = pathUtil.normalize(docpadConfig.outPath)
-			srcPath = pathUtil.normalize(docpadConfig.srcPath)
+			const outPath = pathUtil.normalize(docpad.getPath('out'));
+      		const srcPath = pathUtil.normalize(docpad.getPath('source'));
 
 			if Object.keys(config).length is 0
 				config.default = {}
