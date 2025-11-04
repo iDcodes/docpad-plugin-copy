@@ -1,67 +1,71 @@
 # Export Plugin
 module.exports = (BasePlugin) ->
+	# Define Plugin
+	class Copy extends BasePlugin
+		# Plugin name
+		name: 'copy'
 
-    # Return a subclass using DocPad's required extend() method
-    BasePlugin.extend({
+		# Writing all files has finished
+		writeAfter: (opts,next) ->
+			# Import
+			eachr = require('eachr')
+			pathUtil = require('path')
 
-        name: 'copy'
+			# Prepare
+			docpad = @docpad
+			config = @getConfig()
+			docpadConfig = @docpad.getConfig()
 
-        # Writing all files has finished
-        writeAfter: (opts, next) ->
+			const outPath = pathUtil.normalize(docpad.getPath('out'));
+      		const srcPath = pathUtil.normalize(docpad.getPath('source'));
 
-            eachr = require('eachr')
-            pathUtil = require('path')
-            safeps = require('safeps')
-            TaskGroup = require('taskgroup').TaskGroup
+			console.log('Copy Plugin: writeAfter called');
+		    console.log('Current Config:', config);
+		    console.log('DocpadConfig:', docpadConfig);
 
-            docpad = @docpad
-            config = @getConfig()
-            docpadConfig = @docpad.getConfig()
+			if Object.keys(config).length is 0
+				config.default = {}
+				config.default.src = 'raw'
 
-            outPath = pathUtil.normalize(docpad.getPath('out'))
-            srcPath = pathUtil.normalize(docpad.getPath('source'))
+			TaskGroup = require('taskgroup').TaskGroup
+			tasks = new TaskGroup({concurrency: 1}).done (err, results) ->
+				if not err?
+					docpad.log('info', 'Copying completed successfully')
+				else
+					docpad.log('error', 'Copying error ' + err)
+				next?()
 
-            console.log 'Copy Plugin: writeAfter called'
-            console.log 'Current Config:', config
-            console.log 'DocpadConfig:', docpadConfig
+			eachr config, (target, key) ->
+				tasks.addTask (complete) ->
 
-            # Default config
-            if Object.keys(config).length is 0
-                config.default = src: 'raw'
+					src = pathUtil.join(srcPath, target.src)
+					out = outPath
+					if target.out?
+						out = pathUtil.join(outPath, target.out)
 
-            tasks = new TaskGroup(concurrency: 1).done (err) ->
-                if err?
-                    docpad.log 'error', "Copying error #{err}"
-                else
-                    docpad.log 'info', 'Copying completed successfully'
-                next?()
+					# Use ncp settings if specified
+					options = if target.options? and typeof target.options is 'object' then target.options else {}
 
-            eachr config, (target, key) ->
-                tasks.addTask (complete) ->
+					docpad.log("info", "Copying #{key} out: #{out}, src: #{src}")
 
-                    src = pathUtil.join(srcPath, target.src)
-                    out = if target.out? then pathUtil.join(outPath, target.out) else outPath
+					WINDOWS = /win32/.test(process.platform)
+					OSX = /darwin/.test(process.platform)
+					CYGWIN = /cygwin/.test(process.env.PATH)  # Cheap test!
+					XCOPY = WINDOWS && !CYGWIN
 
-                    docpad.log 'info', "Copying #{key} out: #{out}, src: #{src}"
+					command = (
+						if XCOPY
+							['xcopy', '/eDy', src+'\\*', out+'\\']
+						else
+							if OSX
+								['rsync', '-a', src + '/', out + '/' ]
+							else
+								['cp', '-Ruf', src+'/.', out ]								
+					)
 
-                    WINDOWS = /win32/.test(process.platform)
-                    OSX     = /darwin/.test(process.platform)
-                    CYGWIN  = /cygwin/.test(process.env.PATH)
-                    XCOPY   = WINDOWS and not CYGWIN
-
-                    command =
-                        if XCOPY
-                            ['xcopy', '/eDy', "#{src}\\*", "#{out}\\"]
-                        else if OSX
-                            ['rsync', '-a', "#{src}/", "#{out}/"]
-                        else
-                            ['cp', '-Ruf', "#{src}/.", out]
-
-                    safeps.spawn command, {output: false}, (err) ->
-                        return complete(err) if err
-                        docpad.log 'debug', "Done copying #{key}"
-                        complete()
-
-            tasks.run()
-
-    })
+					safeps = require('safeps')
+					safeps.spawn command, {output:false}, (err) ->
+						return complete(err) if err
+						docpad.log('debug', "Done copying #{key}")
+						return complete()
+			tasks.run()
