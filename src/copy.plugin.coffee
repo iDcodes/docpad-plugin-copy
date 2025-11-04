@@ -1,96 +1,103 @@
-// Modern ES6+ version of docpad-plugin-copy
+/**
+ * Forked docpad-plugin-copy
+ * Modern ES6+ implementation with stable cross-platform file copying.
+ */
 
-module.exports = function(BasePlugin) {
-  class Copy extends BasePlugin {
-    constructor(...args) {
-      super(...args);
-    }
+const path = require('path');
+const eachr = require('eachr');
+const TaskGroup = require('taskgroup').TaskGroup;
+const safeps = require('safeps');
 
+module.exports = function (BasePlugin) {
+  return class CopyPlugin extends BasePlugin {
     get name() {
       return 'copy';
     }
 
+    /**
+     * Triggered after DocPad writes the output directory.
+     * Copies configured folders to output.
+     */
     writeAfter(opts, next) {
-      const eachr = require('eachr');
-      const pathUtil = require('path');
       const docpad = this.docpad;
       const config = this.getConfig();
-      const docpadConfig = this.docpad.getConfig();
-      const outPath = pathUtil.normalize(docpad.getPath('out'));
-      const srcPath = pathUtil.normalize(docpad.getPath('source'));
+      const docpadConfig = docpad.getConfig();
 
-      console.log('Copy Plugin: writeAfter called');
-      console.log('Current Config:', config);
-      console.log('DocpadConfig:', docpadConfig);
-      // Set default config if empty
-      if (Object.keys(config).length === 0) {
-        config.default = {
-          src: 'raw'
-        };
-      }
+      const outPath = path.normalize(docpad.getPath('out'));
+      const srcPath = path.normalize(docpad.getPath('source'));
 
-      const TaskGroup = require('taskgroup').TaskGroup;
-      const tasks = new TaskGroup({
-        concurrency: 1
-      }).done((err, results) => {
-        if (!err) {
-          docpad.log('info', 'Copying completed successfully');
+      docpad.log('debug', '[copy] writeAfter triggered');
+      docpad.log('debug', '[copy] Plugin config:', config);
+
+      // Default config if plugin config is empty
+      const finalConfig =
+        Object.keys(config).length === 0
+          ? { default: { src: 'raw' } }
+          : config;
+
+      const tasks = new TaskGroup({ concurrency: 1 }).done((err) => {
+        if (err) {
+          docpad.log('error', `[copy] Copying error: ${err}`);
         } else {
-          docpad.log('error', `Copying error ${err}`);
+          docpad.log('info', '[copy] Copying completed successfully');
         }
 
-        if (typeof next === 'function') {
-          next();
-        }
+        if (typeof next === 'function') next();
       });
 
-      eachr(config, (target, key) => {
+      eachr(finalConfig, (target, key) => {
         tasks.addTask((complete) => {
-          const src = pathUtil.join(srcPath, target.src);
-          let out = outPath;
+          const srcFull = path.join(srcPath, target.src);
+          const outFull = target.out
+            ? path.join(outPath, target.out)
+            : outPath;
 
-          if (target.out != null) {
-            out = pathUtil.join(outPath, target.out);
-          }
+          const options =
+            target.options && typeof target.options === 'object'
+              ? target.options
+              : {};
 
-          const options = (target.options != null && typeof target.options === 'object')
-            ? target.options
-            : {};
+          docpad.log(
+            'info',
+            `[copy] Copying '${key}' → src: ${srcFull} → out: ${outFull}`
+          );
 
-          docpad.log('info', `Copying ${key} out: ${out}, src: ${src}`);
-
-          const WINDOWS = /win32/.test(process.platform);
-          const OSX = /darwin/.test(process.platform);
+          // PLATFORM DETECTION
+          const WINDOWS = process.platform === 'win32';
+          const OSX = process.platform === 'darwin';
           const CYGWIN = /cygwin/.test(process.env.PATH);
           const XCOPY = WINDOWS && !CYGWIN;
 
           let command;
+
           if (XCOPY) {
-            command = ['xcopy', '/eDy', `${src}\\*`, `${out}\\`];
+            // Windows xcopy
+            command = ['xcopy', '/eDy', `${srcFull}\\*`, `${outFull}\\`];
           } else if (OSX) {
-            command = ['rsync', '-a', `${src}/`, `${out}/`];
+            // macOS
+            command = ['rsync', '-a', `${srcFull}/`, `${outFull}/`];
           } else {
-            command = ['cp', '-Ruf', `${src}/.`, out];
+            // Linux / Unix
+            command = ['cp', '-Ruf', `${srcFull}/.`, outFull];
           }
 
-          const safeps = require('safeps');
+          safeps.spawn(
+            command,
+            { output: false },
+            (err) => {
+              if (err) {
+                docpad.log('error', `[copy] Error copying '${key}': ${err}`);
+                return complete(err);
+              }
 
-          return safeps.spawn(command, {
-            output: false
-          }, (err) => {
-            if (err) {
-              return complete(err);
+              docpad.log('debug', `[copy] Done copying '${key}'`);
+              return complete();
             }
-
-            docpad.log('debug', `Done copying ${key}`);
-            return complete();
-          });
+          );
         });
       });
 
       return tasks.run();
     }
-  }
-
-  return Copy;
+  };
 };
