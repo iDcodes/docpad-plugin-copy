@@ -1,68 +1,96 @@
-# Export Plugin
-module.exports = (BasePlugin) ->
-	# Define Plugin
-	class Copy extends BasePlugin
-		# Plugin name
-		name: 'copy'
+// Modern ES6+ version of docpad-plugin-copy
 
-		# Writing all files has finished
-		writeAfter: (opts,next) ->
-			# Import
-			eachr = require('eachr')
-			pathUtil = require('path')
+module.exports = function(BasePlugin) {
+  class Copy extends BasePlugin {
+    constructor(...args) {
+      super(...args);
+    }
 
-			# Prepare
-			docpad = @docpad
-			config = @getConfig()
-			docpadConfig = @docpad.getConfig()
+    get name() {
+      return 'copy';
+    }
 
-			outPath = pathUtil.normalize(docpadConfig.outPath)
-			srcPath = pathUtil.normalize(docpadConfig.srcPath)
+    writeAfter(opts, next) {
+      const eachr = require('eachr');
+      const pathUtil = require('path');
+      const docpad = this.docpad;
+      const config = this.getConfig();
+      const docpadConfig = this.docpad.getConfig();
+      const outPath = pathUtil.normalize(docpad.getPath('out'));
+      const srcPath = pathUtil.normalize(docpad.getPath('source'));
 
-			if Object.keys(config).length is 0
-				config.default = {}
-				config.default.src = 'raw'
+      console.log('Copy Plugin: writeAfter called');
+      console.log('Current Config:', config);
+      console.log('DocpadConfig:', docpadConfig);
+      // Set default config if empty
+      if (Object.keys(config).length === 0) {
+        config.default = {
+          src: 'raw'
+        };
+      }
 
-			TaskGroup = require('taskgroup').TaskGroup
-			tasks = new TaskGroup({concurrency: 1}).done (err, results) ->
-				if not err?
-					docpad.log('info', 'Copying completed successfully')
-				else
-					docpad.log('error', 'Copying error ' + err)
-				next?()
+      const TaskGroup = require('taskgroup').TaskGroup;
+      const tasks = new TaskGroup({
+        concurrency: 1
+      }).done((err, results) => {
+        if (!err) {
+          docpad.log('info', 'Copying completed successfully');
+        } else {
+          docpad.log('error', `Copying error ${err}`);
+        }
 
-			eachr config, (target, key) ->
-				tasks.addTask (complete) ->
+        if (typeof next === 'function') {
+          next();
+        }
+      });
 
-					src = pathUtil.join(srcPath, target.src)
-					out = outPath
-					if target.out?
-						out = pathUtil.join(outPath, target.out)
+      eachr(config, (target, key) => {
+        tasks.addTask((complete) => {
+          const src = pathUtil.join(srcPath, target.src);
+          let out = outPath;
 
-					# Use ncp settings if specified
-					options = if target.options? and typeof target.options is 'object' then target.options else {}
+          if (target.out != null) {
+            out = pathUtil.join(outPath, target.out);
+          }
 
-					docpad.log("info", "Copying #{key} out: #{out}, src: #{src}")
+          const options = (target.options != null && typeof target.options === 'object')
+            ? target.options
+            : {};
 
-					WINDOWS = /win32/.test(process.platform)
-					OSX = /darwin/.test(process.platform)
-					CYGWIN = /cygwin/.test(process.env.PATH)  # Cheap test!
-					XCOPY = WINDOWS && !CYGWIN
+          docpad.log('info', `Copying ${key} out: ${out}, src: ${src}`);
 
-					command = (
-						if XCOPY
-							['xcopy', '/eDy', src+'\\*', out+'\\']
-						else
-							if OSX
-								['rsync', '-a', src + '/', out + '/' ]
-							else
-								['cp', '-Ruf', src+'/.', out ]								
-					)
+          const WINDOWS = /win32/.test(process.platform);
+          const OSX = /darwin/.test(process.platform);
+          const CYGWIN = /cygwin/.test(process.env.PATH);
+          const XCOPY = WINDOWS && !CYGWIN;
 
-					safeps = require('safeps')
-					safeps.spawn command, {output:false}, (err) ->
-						return complete(err) if err
-						docpad.log('debug', "Done copying #{key}")
-						return complete()
-			tasks.run()
+          let command;
+          if (XCOPY) {
+            command = ['xcopy', '/eDy', `${src}\\*`, `${out}\\`];
+          } else if (OSX) {
+            command = ['rsync', '-a', `${src}/`, `${out}/`];
+          } else {
+            command = ['cp', '-Ruf', `${src}/.`, out];
+          }
 
+          const safeps = require('safeps');
+
+          return safeps.spawn(command, {
+            output: false
+          }, (err) => {
+            if (err) {
+              return complete(err);
+            }
+
+            docpad.log('debug', `Done copying ${key}`);
+            return complete();
+          });
+        });
+      });
+
+      return tasks.run();
+    }
+  }
+
+  return Copy;
+};
