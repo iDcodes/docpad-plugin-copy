@@ -27,7 +27,8 @@
   },
   "main": "./out/copy.plugin.js",
   "scripts": {
-    "prepublish": "coffee -o out -c src"
+    "prepublish": "node -e \"require('fs').mkdirSync('out', {recursive: true}); require('fs').copyFileSync('src/copy.plugin.js', 'out/copy.plugin.js')\"",
+    "postinstall": "node -e \"require('fs').mkdirSync('out', {recursive: true}); require('fs').copyFileSync('src/copy.plugin.js', 'out/copy.plugin.js')\""
   },
   "bugs": {
     "url": "https://github.com/almero-digital-marketing/docpad-plugin-copy/issues"
