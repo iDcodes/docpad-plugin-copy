@@ -19,6 +19,10 @@ module.exports = (BasePlugin) ->
 			const outPath = pathUtil.normalize(docpad.getPath('out'));
       		const srcPath = pathUtil.normalize(docpad.getPath('source'));
 
+			console.log('Copy Plugin: writeAfter called');
+		    console.log('Current Config:', config);
+		    console.log('DocpadConfig:', docpadConfig);
+
 			if Object.keys(config).length is 0
 				config.default = {}
 				config.default.src = 'raw'
