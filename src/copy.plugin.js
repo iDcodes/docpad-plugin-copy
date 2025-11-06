@@ -15,7 +15,7 @@ module.exports = function (BasePlugin) {
             const docpad = this.docpad;
             const config = this.getConfig();
 
-            const srcPath = pathUtil.normalize(docpad.getPath("source"));
+            const runtimeRoot = pathUtil.normalize(docpad.getPath('root'));
             const outPath = pathUtil.normalize(docpad.getPath("out"));
 
             // Set default config if empty
@@ -43,7 +43,7 @@ module.exports = function (BasePlugin) {
             eachr(config, (target, key) => {
                 docpad.log('target', target);
                 tasks.addTask((complete) => {
-                    const src = pathUtil.join(srcPath, target.src);
+                    const src = pathUtil.join(runtimeRoot, target.src);
                     let out = outPath;
 
                     if (target.out != null) {
