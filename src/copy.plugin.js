@@ -41,12 +41,19 @@ module.exports = function (BasePlugin) {
             });
 
             eachr(config, (target, key) => {
+                docpad.log('target', target);
                 tasks.addTask((complete) => {
                     const src = pathUtil.join(srcPath, target.src);
                     let out = outPath;
 
                     if (target.out != null) {
                         out = pathUtil.join(outPath, target.out);
+                    }
+
+                    // Ensure directory exists before copying
+                    const fs = require('fs');
+                    if (!fs.existsSync(out)) {
+                        fs.mkdirSync(out, { recursive: true });
                     }
 
                     const options = (target.options != null && typeof target.options === 'object')
