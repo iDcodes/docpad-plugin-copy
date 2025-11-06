@@ -3,7 +3,10 @@ module.exports = function (BasePlugin) {
     class Copy extends BasePlugin {
         constructor(...args) {
             super(...args);
-            this.name = "copy";
+        }
+
+        get name() {
+            return 'copy';
         }
 
         writeAfter(opts, next) {
@@ -11,9 +14,9 @@ module.exports = function (BasePlugin) {
             const pathUtil = require('path');
             const docpad = this.docpad;
             const config = this.getConfig();
-            
+
             const srcPath = pathUtil.normalize(docpad.getPath("source"));
-            const outPath = pathUtil.normalize(docpad.getPath("outPath"));
+            const outPath = pathUtil.normalize(docpad.getPath("out"));
 
             // Set default config if empty
             if (Object.keys(config).length === 0) {
