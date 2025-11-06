@@ -11,9 +11,9 @@ module.exports = function (BasePlugin) {
             const pathUtil = require('path');
             const docpad = this.docpad;
             const config = this.getConfig();
-            const docpadConfig = this.docpad.getConfig();
-            const outPath = pathUtil.normalize(docpad.getPath('out'));
-            const srcPath = pathUtil.normalize(docpad.getPath('source'));
+            
+            const srcPath = pathUtil.normalize(docpad.getPath("source"));
+            const outPath = pathUtil.normalize(docpad.getPath("outPath"));
 
             // Set default config if empty
             if (Object.keys(config).length === 0) {
