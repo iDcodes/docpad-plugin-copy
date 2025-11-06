@@ -1,6 +1,7 @@
 {
   "name": "docpad-plugin-copy",
-  "version": "2.1.3",
+  "version": "2.1.4",
+  "type": "commonjs",
   "description": "Copies all files in the raw directory to out.",
   "author": "Almero Digital Marketing (http://almero.com)",
   "keywords": [
@@ -14,7 +15,7 @@
     "url": "https://github.com/almero-digital-marketing/docpad-plugin-copy"
   },
   "engines": {
-    "node": ">=0.4",
+    "node": ">=12",
     "docpad": ">=6.66 <7"
   },
   "dependencies": {
@@ -22,13 +23,13 @@
     "safeps": "^2.2.12",
     "taskgroup": "^4.0.5"
   },
-  "devDependencies": {
-    "coffee-script": "~1.4.0"
-  },
-  "main": "./out/copy.plugin.js",
+  "main": "./src/copy.plugin.js",
   "scripts": {
-    "prepublish": "coffee -o out -c src"
+    "prepublish": "echo 'No build step needed'"
   },
+  "files": [
+    "src/"
+  ],
   "bugs": {
     "url": "https://github.com/almero-digital-marketing/docpad-plugin-copy/issues"
   },
